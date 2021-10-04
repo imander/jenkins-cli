@@ -59,7 +59,6 @@ var (
 	commands   = []prompt.Suggest{
 		{Text: "dump-creds", Description: "Print all stored credentials to the console"},
 		{Text: "login", Description: "Log into a Jenkins host"},
-		{Text: "exit", Description: "Exit the cli"},
 	}
 	aliases = map[string]string{
 		"l":  "ls",
@@ -106,7 +105,7 @@ func login() {
 }
 
 func loginPrompt() error {
-	u := getInput(urlPrompt(), jenkins.URL)
+	u := getInput("Jenkins URL", jenkins.URL)
 	ur, err := url.Parse(u)
 	if err != nil {
 		return errors.Wrap(err, "Invalid URL")
@@ -115,16 +114,21 @@ func loginPrompt() error {
 		return errors.New("URL must have http/https scheme")
 	}
 	jenkins.URL = ur.String()
-	jenkins.User = getInput(userPrompt(), jenkins.User)
+	jenkins.User = getInput("Jenkins User", jenkins.User)
 	jenkins.Password = getPassword()
 	return nil
 }
 
-func getInput(msg, def string) string {
+func getInput(msg, current string) string {
+	if current != "" {
+		msg = msg + fmt.Sprintf(" [%s]: ", current)
+	} else {
+		msg += ": "
+	}
 	c := func(in prompt.Document) []prompt.Suggest { return nil }
 	in := prompt.Input(msg, c)
 	if in == "" {
-		return def
+		return current
 	}
 	return in
 }
@@ -143,22 +147,6 @@ func getPassword() string {
 	return p
 }
 
-func urlPrompt() string {
-	p := "Jenkins URL"
-	if jenkins.URL != "" {
-		return p + fmt.Sprintf(" [%s]: ", jenkins.URL)
-	}
-	return p + ": "
-}
-
-func userPrompt() string {
-	p := "Jenkins User"
-	if jenkins.User != "" {
-		return p + fmt.Sprintf(" [%s]: ", jenkins.User)
-	}
-	return p + ": "
-}
-
 func executor(cmd string) {
 	if changeDir(cmd) {
 		return
@@ -169,8 +157,6 @@ func executor(cmd string) {
 		return
 	case "dump-creds":
 		scriptConsole(commandPayload(credsScript))
-	case "exit":
-		os.Exit(0)
 	case "login":
 		login()
 	default:
